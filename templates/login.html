@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Bodega POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-900 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full shadow-2xl space-y-6">
+        <div class="text-center space-y-2">
+            <div class="inline-flex bg-emerald-100 p-3 rounded-2xl text-emerald-600 mb-1">
+                <i data-lucide="store" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Bodega POS</h1>
+            <p class="text-xs text-slate-400 font-medium">Ingresa tus credenciales para acceder</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="bg-rose-50 border border-rose-200 text-rose-600 p-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+                <span>{{ message }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/login" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Usuario</label>
+                <div class="relative">
+                    <input type="text" name="username" required autofocus placeholder="Ej: admin"
+                           class="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contraseña</label>
+                <div class="relative">
+                    <input type="password" name="password" required placeholder="••••••••"
+                           class="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-3 rounded-xl text-sm shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2">
+                <i data-lucide="log-in" class="w-4 h-4"></i> Iniciar Sesión
+            </button>
+        </form>
+
+        <div class="border-t pt-4 text-center">
+            <p class="text-[11px] text-slate-400">Usuarios demostración predeterminados:</p>
+            <p class="text-[11px] font-mono text-slate-500 mt-1">Admin: <strong>admin</strong> / <strong>admin123</strong></p>
+            <p class="text-[11px] font-mono text-slate-500">Cajero: <strong>cajero</strong> / <strong>cajero123</strong></p>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
