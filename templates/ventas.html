@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="p-4 max-w-6xl mx-auto w-full space-y-4">
+    <div class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center">
+        <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="receipt" class="text-emerald-600"></i> Historial de Ventas</h2>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-50 border-b text-xs uppercase font-bold text-slate-500">
+                <tr>
+                    <th class="p-3"># Ticket</th>
+                    <th class="p-3">Fecha y Hora</th>
+                    <th class="p-3">Items Despachados</th>
+                    <th class="p-3 text-right">Total Kobrado</th>
+                </tr>
+            </thead>
+            <tbody id="sales-table" class="divide-y text-sm"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+async function cargarVentas() {
+    const res = await fetch('/api/historial-ventas');
+    const ventas = await res.json();
+    const tbody = document.getElementById('sales-table');
+    tbody.innerHTML = '';
+    ventas.forEach(v => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50">
+                <td class="p-3 font-mono font-bold text-slate-600">#${v.id}</td>
+                <td class="p-3 text-slate-500">${v.fecha}</td>
+                <td class="p-3">${v.total_items} registro(s)</td>
+                <td class="p-3 text-right font-black text-emerald-600">$${v.total.toFixed(2)}</td>
+            </tr>
+        `;
+    });
+}
+cargarVentas();
+</script>
+{% endblock %}
