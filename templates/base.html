@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema POS & Inventario - Bodega</title>
+
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.svg') }}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* Animaciones personalizadas */
         @keyframes spin-slow {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -33,7 +38,7 @@
             <div class="flex items-center justify-between h-16">
                 
                 <div class="flex items-center gap-3">
-                    <a href="{{ url_for('pos_view') }}" class="flex items-center gap-2 font-black text-lg text-emerald-400 tracking-wide">
+                    <a href="{{ url_for('pos_view') if 'pos_view' in endpoints else '/' }}" class="flex items-center gap-2 font-black text-lg text-emerald-400 tracking-wide">
                         <div class="p-1.5 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                             <i data-lucide="store" class="w-5 h-5 text-emerald-400"></i>
                         </div>
@@ -42,24 +47,24 @@
                 </div>
 
                 <div class="hidden md:flex items-center gap-1 text-xs font-semibold">
-                    <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+                    <a href="/" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
                         <i data-lucide="shopping-cart" class="w-4 h-4 text-emerald-400"></i> Punto de Venta
                     </a>
 
                     {% if current_user.role == 'admin' %}
-                    <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+                    <a href="/inventario" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
                         <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i> Inventario
                     </a>
 
-                    <a href="{{ url_for('ventas_view') }}" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+                    <a href="/ventas" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
                         <i data-lucide="receipt" class="w-4 h-4 text-emerald-400"></i> Historial
                     </a>
 
-                    <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+                    <a href="/dashboard" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
                         <i data-lucide="layout-dashboard" class="w-4 h-4 text-emerald-400"></i> Dashboard
                     </a>
 
-                    <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
+                    <a href="/usuarios" class="px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-transparent hover:border-slate-700">
                         <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Usuarios
                     </a>
                     {% endif %}
@@ -85,20 +90,20 @@
         </div>
 
         <div id="mobile-menu" class="hidden md:hidden border-t border-slate-800 bg-slate-900 px-4 pt-2 pb-4 space-y-1 text-xs font-medium">
-            <a href="{{ url_for('pos_view') }}" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
+            <a href="/" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
                 <i data-lucide="shopping-cart" class="w-4 h-4 text-emerald-400"></i> Punto de Venta
             </a>
             {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('inventario_view') }}" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
+            <a href="/inventario" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
                 <i data-lucide="boxes" class="w-4 h-4 text-emerald-400"></i> Inventario
             </a>
-            <a href="{{ url_for('ventas_view') }}" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
+            <a href="/ventas" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
                 <i data-lucide="receipt" class="w-4 h-4 text-emerald-400"></i> Historial de Ventas
             </a>
-            <a href="{{ url_for('dashboard_view') }}" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
+            <a href="/dashboard" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
                 <i data-lucide="layout-dashboard" class="w-4 h-4 text-emerald-400"></i> Dashboard
             </a>
-            <a href="{{ url_for('usuarios_view') }}" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
+            <a href="/usuarios" class="block px-3 py-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white flex items-center gap-2">
                 <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Usuarios
             </a>
             {% endif %}
@@ -143,7 +148,7 @@
         // Inicializar íconos Lucide
         lucide.createIcons();
 
-        // Control del Preloader (Ocultar al terminar de cargar)
+        // Control del Preloader (Ocultar al terminar de cargar los recursos)
         window.addEventListener('load', () => {
             const preloader = document.getElementById('preloader');
             if (preloader) {
@@ -157,7 +162,9 @@
         // Toggle para menú móvil
         function toggleMobileMenu() {
             const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('hidden');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
         }
     </script>
 </body>
