@@ -210,18 +210,34 @@ def dashboard_view():
     conn = get_db()
     cursor = conn.cursor()
     
-    # Calcular métricas básicas para el dashboard
-    cursor.execute("SELECT SUM(total_usd) as total FROM ventas")
-    ventas_total = cursor.fetchone()['total'] or 0.0
+    # 1. Ventas de hoy
+    cursor.execute("SELECT SUM(total_usd) as total FROM ventas WHERE DATE(fecha) = DATE('now', 'localtime')")
+    row_hoy = cursor.fetchone()
+    ventas_hoy_usd = row_hoy['total'] or 0.0
 
-    cursor.execute("SELECT COUNT(*) as total FROM productos")
-    productos_count = cursor.fetchone()['total'] or 0
+    # 2. Ventas del mes
+    cursor.execute("SELECT SUM(total_usd) as total FROM ventas WHERE strftime('%Y-%m', fecha) = strftime('%Y-%m', 'now')")
+    row_mes = cursor.fetchone()
+    ventas_mes_usd = row_mes['total'] or 0.0
 
-    cursor.execute("SELECT SUM(deuda_usd) as total FROM clientes")
-    deudas_total = cursor.fetchone()['total'] or 0.0
+    # 3. Alertas de inventario (productos con stock <= 5)
+    cursor.execute("SELECT COUNT(*) as total FROM productos WHERE stock <= 5")
+    row_criticos = cursor.fetchone()
+    stock_critico = row_criticos['total'] or 0
 
     conn.close()
-    return render_template('dashboard.html', ventas_total=ventas_total, productos_count=productos_count, deudas_total=deudas_total)
+    
+    # Tasa de referencia en Bolívares para las tarjetas
+    tasa_bcv = 36.5
+    ventas_hoy_bs = ventas_hoy_usd * tasa_bcv
+    ventas_mes_bs = ventas_mes_usd * tasa_bcv
+
+    return render_template('dashboard.html', 
+                           ventas_hoy_usd=ventas_hoy_usd, 
+                           ventas_hoy_bs=ventas_hoy_bs,
+                           ventas_mes_usd=ventas_mes_usd, 
+                           ventas_mes_bs=ventas_mes_bs,
+                           stock_critico=stock_critico)
 
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
@@ -343,3 +359,4 @@ def procesar_venta():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
