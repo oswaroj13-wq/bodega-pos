@@ -1,195 +1,175 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - Bodega POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-{% block content %}
-<div class="space-y-6">
+    <!-- Barra de Navegación -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="{{ url_for('pos_view') }}" class="text-xl font-bold flex items-center gap-2 text-emerald-400">
+                <i class="fas fa-store"></i> BodegaPOS
+            </a>
+            
+            <!-- Menú Escritorio -->
+            <div class="hidden md:flex items-center space-x-2 text-sm font-medium">
+                <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+                <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+                <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Clientes</a>
+                <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+                <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+                
+                <!-- Botón Tasa (Escritorio) -->
+                <button onclick="toggleModalTasa()" class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg font-semibold flex items-center gap-1.5 hover:bg-emerald-500/20 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+                <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+            </div>
 
-    <!-- ENCABEZADO -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
-        <div>
-            <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-users text-blue-500"></i> Gestión de Clientes y Créditos
-            </h1>
-            <p class="text-xs text-slate-400">Administra tus clientes recurrentes y registra abonos de cuentas por cobrar.</p>
+            <!-- Botones Móvil -->
+            <div class="md:hidden flex items-center gap-2">
+                <button onclick="toggleModalTasa()" class="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+
+                <button id="menu-btn" class="p-2 rounded-lg bg-slate-700 text-slate-300 hover:text-white focus:outline-none">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+            </div>
         </div>
-        
-        <button onclick="abrirModalCliente()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
-            <i class="fa-solid fa-user-plus"></i> Registrar Cliente
-        </button>
+
+        <!-- Menú Desplegable Móvil -->
+        <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-slate-700 flex flex-col space-y-1 text-sm font-medium">
+            <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+            <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+            <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Clientes</a>
+            <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+            <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal Clientes -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100">Directorio de Clientes</h1>
+
+        <!-- Formulario para Registrar Cliente -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                <i class="fas fa-user-plus text-emerald-400"></i> Registrar Nuevo Cliente
+            </h2>
+            <form action="{{ url_for('clientes_view') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nombre Completo</label>
+                    <input type="text" name="nombre" required placeholder="Ej: Maria Perez" 
+                           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Teléfono</label>
+                    <input type="text" name="telefono" placeholder="Ej: 04121234567" 
+                           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Límite de Crédito ($)</label>
+                    <input type="number" step="0.01" name="limite_credito" value="0.00" 
+                           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div class="sm:col-span-2 lg:col-span-3 flex justify-end mt-2">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fas fa-save"></i> Guardar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Clientes -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                <i class="fas fa-users text-emerald-400"></i> Lista de Clientes
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 text-sm">
+                            <th class="py-3 px-4">Nombre</th>
+                            <th class="py-3 px-4">Teléfono</th>
+                            <th class="py-3 px-4">Deuda ($)</th>
+                            <th class="py-3 px-4">Deuda (Bs)</th>
+                            <th class="py-3 px-4">Límite ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/50 text-sm">
+                        {% if clientes %}
+                            {% for c in clientes %}
+                            <tr class="hover:bg-slate-700/30 transition">
+                                <td class="py-3 px-4 font-medium text-slate-200">{{ c.nombre }}</td>
+                                <td class="py-3 px-4 text-slate-400">{{ c.telefono or 'N/A' }}</td>
+                                <td class="py-3 px-4 font-semibold text-rose-400">${{ "%.2f"|format(c.deuda) }}</td>
+                                <td class="py-3 px-4 text-slate-300">Bs. {{ "%.2f"|format(c.deuda * tasa_actual) }}</td>
+                                <td class="py-3 px-4 text-slate-400">${{ "%.2f"|format(c.limite_credito) }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-slate-500">No hay clientes registrados aún.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Tasa -->
+    <div id="tasa-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <i class="fas fa-coins text-emerald-400"></i> Actualizar Tasa BCV
+                </h3>
+                <button onclick="toggleModalTasa()" class="text-slate-400 hover:text-white text-lg"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <form action="{{ url_for('actualizar_tasa') }}" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nueva Tasa en Bolívares (Bs. / $)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs.</span>
+                        <input type="number" step="0.01" name="tasa_dolar" value="{{ tasa_actual }}" 
+                               class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="toggleModalTasa()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition">Guardar Tasa</button>
+                </div>
+            </form>
+        </div>
     </div>
 
-    <!-- LISTADO DE CLIENTES -->
-    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Directorio de Clientes</h2>
-            <input type="text" id="filter-clientes" onkeyup="filtrarClientes()" placeholder="Buscar por nombre o teléfono..." 
-                   class="w-full sm:w-64 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-        </div>
+    <!-- Scripts -->
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse" id="tabla-clientes">
-                <thead>
-                    <tr class="border-b border-slate-700 text-xs font-semibold text-slate-400 uppercase">
-                        <th class="py-3 px-2">Cliente</th>
-                        <th class="py-3 px-2">Teléfono</th>
-                        <th class="py-3 px-2 text-center">Deuda ($)</th>
-                        <th class="py-3 px-2 text-center">Deuda (BS)</th>
-                        <th class="py-3 px-2 text-center">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="clientes-tbody" class="divide-y divide-slate-700/50 text-sm">
-                    <tr>
-                        <td colspan="5" class="py-6 text-center text-slate-500">Cargando directorio de clientes...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+        if (menuBtn && mobileMenu) {
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
 
-</div>
-
-<!-- MODAL REGISTRO CLIENTE -->
-<div id="modal-cliente" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl space-y-4">
-        <h3 class="text-white font-bold text-base">Registrar Nuevo Cliente</h3>
-        
-        <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Nombre Completo *</label>
-            <input type="text" id="nuevo-nombre" placeholder="Ej: Juan Pérez" 
-                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-        </div>
-
-        <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Teléfono / WhatsApp</label>
-            <input type="text" id="nuevo-telefono" placeholder="Ej: 0412-1234567" 
-                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-        </div>
-
-        <div class="flex gap-2 pt-2">
-            <button onclick="cerrarModalCliente()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-xl text-xs transition">Cancelar</button>
-            <button onclick="guardarCliente()" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl text-xs transition">Guardar</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL ABONAR DEUDA -->
-<div id="modal-abono" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl space-y-4">
-        <h3 class="text-white font-bold text-base">Registrar Abono a Cuenta</h3>
-        <p id="abono-cliente-nombre" class="text-xs text-blue-400 font-semibold"></p>
-        
-        <div>
-            <label class="block text-xs font-medium text-slate-400 mb-1">Monto a Abonar ($ USD) *</label>
-            <input type="number" step="0.01" min="0.01" id="abono-monto" placeholder="0.00" 
-                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-        </div>
-
-        <div class="flex gap-2 pt-2">
-            <button onclick="cerrarModalAbono()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-xl text-xs transition">Cancelar</button>
-            <button onclick="procesarAbono()" class="w-1/2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-xl text-xs transition">Procesar Abono</button>
-        </div>
-    </div>
-</div>
-
-<script>
-    const TASA = 36.50;
-    let clienteSeleccionadoId = null;
-
-    async function cargarTablaClientes() {
-        try {
-            const res = await fetch('/api/clientes');
-            const clientes = await res.json();
-            const tbody = document.getElementById('clientes-tbody');
-
-            if (clientes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-500">No hay clientes registrados.</td></tr>';
-                return;
+        function toggleModalTasa() {
+            const tasaModal = document.getElementById('tasa-modal');
+            if (tasaModal) {
+                tasaModal.classList.toggle('hidden');
+                tasaModal.classList.toggle('flex');
             }
-
-            tbody.innerHTML = clientes.map(c => `
-                <tr class="hover:bg-slate-700/30 transition">
-                    <td class="py-3 px-2 font-medium text-white">${c.nombre}</td>
-                    <td class="py-3 px-2 text-slate-400">${c.telefono || 'N/A'}</td>
-                    <td class="py-3 px-2 text-center font-bold ${c.deuda_usd > 0 ? 'text-amber-400' : 'text-slate-400'}">
-                        $${c.deuda_usd.toFixed(2)}
-                    </td>
-                    <td class="py-3 px-2 text-center text-slate-300">
-                        ${(c.deuda_usd * TASA).toFixed(2)} BS
-                    </td>
-                    <td class="py-3 px-2 text-center">
-                        ${c.id !== 1 && c.deuda_usd > 0 ? `
-                            <button onclick="abrirModalAbono(${c.id}, '${c.nombre}')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1 rounded-lg font-bold transition">
-                                <i class="fa-solid fa-hand-holding-dollar mr-1"></i> Abonar
-                            </button>
-                        ` : '<span class="text-xs text-slate-500">Sin Deuda</span>'}
-                    </td>
-                </tr>
-            `).join('');
-        } catch (e) {
-            console.error(e);
         }
-    }
-
-    function abrirModalCliente() { document.getElementById('modal-cliente').classList.remove('hidden'); }
-    function cerrarModalCliente() { document.getElementById('modal-cliente').classList.add('hidden'); }
-
-    async function guardarCliente() {
-        const nombre = document.getElementById('nuevo-nombre').value;
-        const telefono = document.getElementById('nuevo-telefono').value;
-
-        if (!nombre) { alert('El nombre es obligatorio.'); return; }
-
-        const res = await fetch('/api/clientes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre, telefono })
-        });
-
-        if (res.ok) {
-            cerrarModalCliente();
-            document.getElementById('nuevo-nombre').value = '';
-            document.getElementById('nuevo-telefono').value = '';
-            cargarTablaClientes();
-        }
-    }
-
-    function abrirModalAbono(id, nombre) {
-        clienteSeleccionadoId = id;
-        document.getElementById('abono-cliente-nombre').innerText = `Cliente: ${nombre}`;
-        document.getElementById('modal-abono').classList.remove('hidden');
-    }
-
-    function cerrarModalAbono() {
-        clienteSeleccionadoId = null;
-        document.getElementById('modal-abono').classList.add('hidden');
-    }
-
-    async function procesarAbono() {
-        const monto = parseFloat(document.getElementById('abono-monto').value || 0);
-        if (monto <= 0) { alert('Ingresa un monto válido.'); return; }
-
-        const res = await fetch('/api/clientes/abonar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cliente_id: clienteSeleccionadoId, monto_usd: monto })
-        });
-
-        if (res.ok) {
-            cerrarModalAbono();
-            document.getElementById('abono-monto').value = '';
-            cargarTablaClientes();
-        }
-    }
-
-    function filtrarClientes() {
-        const filter = document.getElementById('filter-clientes').value.toLowerCase();
-        const rows = document.getElementById('clientes-tbody').getElementsByTagName('tr');
-
-        for (let i = 0; i < rows.length; i++) {
-            const text = rows[i].textContent.toLowerCase();
-            rows[i].style.display = text.includes(filter) ? "" : "none";
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', cargarTablaClientes);
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>
