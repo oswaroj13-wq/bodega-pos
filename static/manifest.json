@@ -1,0 +1,15 @@
+{
+  "short_name": "BodegaPOS",
+  "name": "BodegaPOS - Punto de Venta",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#1e293b",
+  "display": "standalone"
+}
