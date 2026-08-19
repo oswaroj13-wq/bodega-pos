@@ -1,152 +1,163 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bodega POS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-{% block content %}
-<!-- Chart.js para las gráficas estadísticas -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<div class="space-y-6">
-
-    <!-- Header del Dashboard -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
-        <div>
-            <h1 class="text-xl font-bold text-white flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-blue-500"></i> Dashboard de Negocio
-            </h1>
-            <p class="text-xs text-slate-400">Métricas en tiempo real de facturación, stock e indicadores clave.</p>
-        </div>
-        <div class="text-xs bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
-            Tasa Activa: <span id="dash-tasa" class="font-bold text-green-400">-- BS/$</span>
-        </div>
-    </div>
-
-    <!-- Rejilla de Métricas Principales (KPIs) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        <!-- Venta del Día -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md relative overflow-hidden">
-            <div class="flex justify-between items-start">
-                <div>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ventas de Hoy</span>
-                    <h3 id="dash-ventas-hoy-usd" class="text-3xl font-black text-green-400 mt-2">$0.00</h3>
-                    <p id="dash-ventas-hoy-bs" class="text-sm font-semibold text-slate-300 mt-1">0.00 BS</p>
-                </div>
-                <div class="bg-green-500/10 p-3 rounded-lg border border-green-500/20 text-green-400">
-                    <i class="fa-solid fa-cash-register text-2xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Ventas del Mes -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md relative overflow-hidden">
-            <div class="flex justify-between items-start">
-                <div>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ventas del Mes</span>
-                    <h3 id="dash-ventas-mes-usd" class="text-3xl font-black text-blue-400 mt-2">$0.00</h3>
-                    <p id="dash-ventas-mes-bs" class="text-sm font-semibold text-slate-300 mt-1">0.00 BS</p>
-                </div>
-                <div class="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 text-blue-400">
-                    <i class="fa-solid fa-calendar-check text-2xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stock Bajo -->
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md relative overflow-hidden sm:col-span-2 lg:col-span-1">
-            <div class="flex justify-between items-start">
-                <div>
-                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Alertas de Inventario</span>
-                    <h3 id="dash-stock-bajo" class="text-3xl font-black text-amber-400 mt-2">0</h3>
-                    <p class="text-sm text-slate-400 mt-1">Productos con stock crítico (≤ 5)</p>
-                </div>
-                <div class="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20 text-amber-400">
-                    <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Gráfica de Tendencia de Ventas -->
-    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
-        <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <i class="fa-solid fa-chart-bar text-blue-400"></i> Rendimiento de Ventas
-        </h2>
-        <div class="relative w-full h-72">
-            <canvas id="ventasChart"></canvas>
-        </div>
-    </div>
-
-</div>
-
-<script>
-    let salesChart = null;
-
-    document.addEventListener('DOMContentLoaded', cargarMetricas);
-
-    async function cargarMetricas() {
-        try {
-            const res = await fetch('/api/metrics');
-            const data = await res.json();
-
-            document.getElementById('dash-ventas-hoy-usd').innerText = `$${data.ventas_hoy_usd.toFixed(2)}`;
-            document.getElementById('dash-ventas-hoy-bs').innerText = `${data.ventas_hoy_local.toFixed(2)} BS`;
+    <!-- Barra de Navegación IDÉNTICA al resto de vistas con Menú Desplegable -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3 shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="{{ url_for('pos_view') }}" class="text-xl font-bold flex items-center gap-2 text-emerald-400">
+                <i class="fas fa-store"></i> BodegaPOS
+            </a>
             
-            document.getElementById('dash-ventas-mes-usd').innerText = `$${data.ventas_mes_usd.toFixed(2)}`;
-            document.getElementById('dash-ventas-mes-bs').innerText = `${data.ventas_mes_local.toFixed(2)} BS`;
+            <!-- Menú para Escritorio -->
+            <div class="hidden md:flex items-center space-x-1 text-sm font-medium">
+                <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+                <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+                <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+                <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Dashboard</a>
+                <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+                <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+            </div>
 
-            document.getElementById('dash-stock-bajo').innerText = data.stock_bajo;
-            document.getElementById('dash-tasa').innerText = `${data.tasa.toFixed(2)} BS/$`;
+            <!-- Botón Hamburguesa para Móvil -->
+            <div class="md:hidden flex items-center">
+                <button id="menu-btn" class="p-2 rounded-lg bg-slate-700 text-slate-300 hover:text-white focus:outline-none">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
 
-            renderizarGrafica(data.ventas_7dias || []);
-        } catch (err) {
-            console.error('Error al cargar métricas:', err);
-        }
-    }
+        <!-- Menú Desplegable para Móviles -->
+        <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-slate-700 flex flex-col space-y-1 text-sm font-medium">
+            <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+            <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+            <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+            <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Dashboard</a>
+            <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+        </div>
+    </nav>
 
-    function renderizarGrafica(datosDias) {
-        const ctx = document.getElementById('ventasChart').getContext('2d');
+    <!-- Contenido Principal -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100">Dashboard Administrativo</h1>
         
-        const labels = datosDias.map(d => d.dia);
-        const totals = datosDias.map(d => d.total);
+        <!-- 1. Configuración de Tasa del Dólar (PRIMERO) -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg max-w-xl">
+            <h3 class="text-lg font-semibold mb-4 text-slate-200 flex items-center gap-2">
+                <i class="fas fa-dollar-sign text-emerald-400"></i> Configuración de Tasa del Dólar (BCV)
+            </h3>
+            <form method="POST" class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs. / $</span>
+                    <input type="number" step="0.01" name="tasa_dolar" value="{{ tasa_actual }}" 
+                           class="w-full pl-16 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition" required>
+                </div>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-2.5 rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2">
+                    <i class="fas fa-save"></i> Actualizar Tasa
+                </button>
+            </form>
+        </div>
 
-        if (salesChart) {
-            salesChart.destroy();
-        }
+        <!-- 2. Tarjetas de Métricas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Ventas de Hoy -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-slate-400 font-medium">Ventas de Hoy</h3>
+                    <div class="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                        <i class="fas fa-calendar-day text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-emerald-400 mb-1">${{ "%.2f"|format(ventas_hoy_usd) }}</div>
+                <div class="text-sm text-slate-400">Bs: {{ "%.2f"|format(ventas_hoy_bs) }}</div>
+            </div>
+            
+            <!-- Ventas del Mes -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-slate-400 font-medium">Ventas del Mes</h3>
+                    <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-blue-400 mb-1">${{ "%.2f"|format(ventas_mes_usd) }}</div>
+                <div class="text-sm text-slate-400">Bs: {{ "%.2f"|format(ventas_mes_bs) }}</div>
+            </div>
+            
+            <!-- Stock Crítico -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-slate-400 font-medium">Stock Crítico</h3>
+                    <div class="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
+                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-rose-400 mb-1">{{ stock_critico }}</div>
+                <div class="text-sm text-slate-400">Productos con stock ≤ 5</div>
+            </div>
+        </div>
 
-        salesChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels.length ? labels : ['Hoy'],
-                datasets: [{
-                    label: 'Ventas ($ USD)',
-                    data: totals.length ? totals : [0],
-                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                    borderColor: 'rgba(59, 130, 246, 1)',
-                    borderWidth: 2,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: 'rgba(51, 65, 85, 0.5)' },
-                        ticks: { color: '#94a3b8' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#94a3b8' }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: { color: '#f8fafc' }
-                    }
-                }
-            }
+        <!-- 3. Tabla de Movimientos Recientes del Sistema -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+            <h3 class="text-lg font-semibold mb-4 text-slate-200 flex items-center gap-2">
+                <i class="fas fa-exchange-alt text-emerald-400"></i> Movimientos Recientes (Entradas y Salidas)
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 text-sm">
+                            <th class="py-3 px-4">Fecha / Hora</th>
+                            <th class="py-3 px-4">Producto</th>
+                            <th class="py-3 px-4">Tipo</th>
+                            <th class="py-3 px-4">Cantidad</th>
+                            <th class="py-3 px-4">Motivo / Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/50 text-sm">
+                        {% if movimientos %}
+                            {% for m in movimientos %}
+                            <tr class="hover:bg-slate-700/30 transition">
+                                <td class="py-3 px-4 text-slate-400">{{ m.fecha }}</td>
+                                <td class="py-3 px-4 font-medium text-slate-200">{{ m.producto_nombre }}</td>
+                                <td class="py-3 px-4">
+                                    {% if m.tipo == 'ENTRADA' %}
+                                        <span class="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-lg text-xs font-semibold">ENTRADA</span>
+                                    {% else %}
+                                        <span class="px-2.5 py-1 bg-rose-500/10 text-rose-400 rounded-lg text-xs font-semibold">SALIDA</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 font-bold">{{ m.cantidad }}</td>
+                                <td class="py-3 px-4 text-slate-300">{{ m.motivo or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-slate-500">No hay movimientos registrados recientemente.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Script para desplegar el menú en dispositivos móviles -->
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
         });
-    }
-</script>
-{% endblock %}
+    </script>
+</body>
+</html>
