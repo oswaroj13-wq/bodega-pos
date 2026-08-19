@@ -1,157 +1,179 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="p-4 max-w-5xl mx-auto w-full space-y-4">
-    <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
-        <h2 class="text-lg font-bold flex items-center gap-2 text-slate-800">
-            <i data-lucide="users" class="text-emerald-600"></i> Gestión de Usuarios
-        </h2>
-        <button onclick="abrirModalNuevoUser()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1 shadow">
-            <i data-lucide="user-plus" class="w-4 h-4"></i> Nuevo Usuario
-        </button>
-    </div>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuarios - Bodega POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-    <div class="bg-white rounded-xl shadow-sm border overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-            <thead class="bg-slate-50 border-b text-xs uppercase font-bold text-slate-500">
-                <tr>
-                    <th class="p-3">ID</th>
-                    <th class="p-3">Usuario</th>
-                    <th class="p-3">Rol</th>
-                    <th class="p-3 text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="users-table" class="divide-y text-sm"></tbody>
-        </table>
-    </div>
-</div>
+    <!-- Barra de Navegación -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="{{ url_for('pos_view') }}" class="text-xl font-bold flex items-center gap-2 text-emerald-400">
+                <i class="fas fa-store"></i> BodegaPOS
+            </a>
+            
+            <!-- Menú Escritorio -->
+            <div class="hidden md:flex items-center space-x-2 text-sm font-medium">
+                <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+                <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+                <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+                <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+                <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Usuarios</a>
+                
+                <!-- Botón Tasa (Escritorio) -->
+                <button onclick="toggleModalTasa()" class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg font-semibold flex items-center gap-1.5 hover:bg-emerald-500/20 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+                <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+            </div>
 
-<div id="modal-user" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex justify-center items-center p-4 z-50">
-    <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-3">
-        <h3 id="modal-user-title" class="text-base font-bold text-slate-800">Nuevo Usuario</h3>
-        <input type="hidden" id="user-id">
-        
-        <div>
-            <label class="text-xs font-bold text-slate-700">Nombre de Usuario</label>
-            <input type="text" id="user-name" placeholder="Ej: pedro" class="w-full border rounded-xl p-2.5 text-sm mt-1 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <!-- Botones Móvil -->
+            <div class="md:hidden flex items-center gap-2">
+                <button onclick="toggleModalTasa()" class="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+
+                <button id="menu-btn" class="p-2 rounded-lg bg-slate-700 text-slate-300 hover:text-white focus:outline-none">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+            </div>
         </div>
 
-        <div>
-            <label class="text-xs font-bold text-slate-700">Rol de Sistema</label>
-            <select id="user-role" class="w-full border rounded-xl p-2.5 text-sm mt-1 focus:ring-2 focus:ring-emerald-500 focus:outline-none bg-white">
-                <option value="cajero">Cajero (Solo POS)</option>
-                <option value="admin">Administrador (Acceso Total)</option>
-            </select>
+        <!-- Menú Desplegable Móvil -->
+        <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-slate-700 flex flex-col space-y-1 text-sm font-medium">
+            <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Punto de Venta</a>
+            <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+            <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+            <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+            <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Usuarios</a>
+            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
         </div>
+    </nav>
 
-        <div>
-            <label class="text-xs font-bold text-slate-700">Contraseña</label>
-            <input type="password" id="user-pass" placeholder="••••••••" class="w-full border rounded-xl p-2.5 text-sm mt-1 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-            <p id="pass-help" class="text-[10px] text-slate-400 mt-1 hidden">Deja en blanco si no deseas cambiar la contraseña actual.</p>
-        </div>
+    <!-- Contenido Principal Usuarios -->
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-100">Gestión de Usuarios</h1>
 
-        <div class="flex justify-end gap-2 pt-3 border-t">
-            <button onclick="cerrarModalUser()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold">Cancelar</button>
-            <button onclick="guardarUsuario()" class="px-5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow">Guardar</button>
-        </div>
-    </div>
-</div>
-
-<script>
-async function cargarUsuarios() {
-    const res = await fetch('/api/usuarios');
-    const users = await res.json();
-    const tbody = document.getElementById('users-table');
-    tbody.innerHTML = '';
-
-    users.forEach(u => {
-        tbody.innerHTML += `
-            <tr class="hover:bg-slate-50">
-                <td class="p-3 font-mono text-slate-400 text-xs">#${u.id}</td>
-                <td class="p-3 font-bold text-slate-800">${u.username}</td>
-                <td class="p-3">
-                    <span class="px-2 py-1 text-[10px] font-black rounded-lg uppercase ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
-                        ${u.role}
-                    </span>
-                </td>
-                <td class="p-3 text-center flex justify-center gap-3">
-                    <button onclick='editarUsuario(${JSON.stringify(u)})' class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1">
-                        <i data-lucide="edit" class="w-3.5 h-3.5"></i> Editar / Clave
+        <!-- Formulario para Registrar Usuario -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                <i class="fas fa-user-shield text-emerald-400"></i> Crear Nuevo Usuario
+            </h2>
+            <form action="{{ url_for('usuarios_view') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nombre de Usuario</label>
+                    <input type="text" name="username" required placeholder="Ej: cajero1" 
+                           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Contraseña</label>
+                    <input type="password" name="password" required placeholder="••••••••" 
+                           class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Rol</label>
+                    <select name="rol" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                        <option value="cajero">Cajero</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div class="sm:col-span-3 flex justify-end mt-2">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2">
+                        <i class="fas fa-user-plus"></i> Crear Usuario
                     </button>
-                    <button onclick="eliminarUsuario(${u.id})" class="text-rose-600 font-bold text-xs hover:underline flex items-center gap-1">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Eliminar
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-    lucide.createIcons();
-}
+                </div>
+            </form>
+        </div>
 
-function abrirModalNuevoUser() {
-    document.getElementById('user-id').value = '';
-    document.getElementById('user-name').value = '';
-    document.getElementById('user-role').value = 'cajero';
-    document.getElementById('user-pass').value = '';
-    document.getElementById('user-pass').required = true;
-    document.getElementById('pass-help').classList.add('hidden');
-    document.getElementById('modal-user-title').innerText = 'Nuevo Usuario';
-    document.getElementById('modal-user').classList.remove('hidden');
-}
+        <!-- Tabla de Usuarios -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
+            <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+                <i class="fas fa-user-tag text-emerald-400"></i> Usuarios Registrados
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400 text-sm">
+                            <th class="py-3 px-4">ID</th>
+                            <th class="py-3 px-4">Usuario</th>
+                            <th class="py-3 px-4">Rol</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-700/50 text-sm">
+                        {% if usuarios %}
+                            {% for u in usuarios %}
+                            <tr class="hover:bg-slate-700/30 transition">
+                                <td class="py-3 px-4 font-mono text-slate-400">{{ u.id }}</td>
+                                <td class="py-3 px-4 font-medium text-slate-200">{{ u.username }}</td>
+                                <td class="py-3 px-4">
+                                    {% if u.rol == 'admin' %}
+                                        <span class="px-2.5 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-lg font-bold text-xs uppercase">Admin</span>
+                                    {% else %}
+                                        <span class="px-2.5 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg font-bold text-xs uppercase">Cajero</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="3" class="py-6 text-center text-slate-500">No hay usuarios registrados aún.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 
-function editarUsuario(u) {
-    document.getElementById('user-id').value = u.id;
-    document.getElementById('user-name').value = u.username;
-    document.getElementById('user-role').value = u.role;
-    document.getElementById('user-pass').value = '';
-    document.getElementById('user-pass').required = false;
-    document.getElementById('pass-help').classList.remove('hidden');
-    document.getElementById('modal-user-title').innerText = `Editar Usuario: ${u.username}`;
-    document.getElementById('modal-user').classList.remove('hidden');
-}
+    <!-- Modal Tasa -->
+    <div id="tasa-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <i class="fas fa-coins text-emerald-400"></i> Actualizar Tasa BCV
+                </h3>
+                <button onclick="toggleModalTasa()" class="text-slate-400 hover:text-white text-lg"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <form action="{{ url_for('actualizar_tasa') }}" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nueva Tasa en Bolívares (Bs. / $)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs.</span>
+                        <input type="number" step="0.01" name="tasa_dolar" value="{{ tasa_actual }}" 
+                               class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="toggleModalTasa()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition">Guardar Tasa</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-function cerrarModalUser() {
-    document.getElementById('modal-user').classList.add('hidden');
-}
+    <!-- Scripts -->
+    <script>
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
 
-async function guardarUsuario() {
-    const id = document.getElementById('user-id').value;
-    const username = document.getElementById('user-name').value.trim();
-    const role = document.getElementById('user-role').value;
-    const password = document.getElementById('user-pass').value;
-
-    if (!username) return alert("El nombre de usuario es obligatorio.");
-    if (!id && !password) return alert("Debes ingresar una contraseña para el nuevo usuario.");
-
-    const data = { id, username, role, password };
-    const method = id ? 'PUT' : 'POST';
-
-    const res = await fetch('/api/usuarios', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-
-    if (res.ok) {
-        cerrarModalUser();
-        cargarUsuarios();
-    } else {
-        const err = await res.json();
-        alert(err.error || "Error al procesar la solicitud");
-    }
-}
-
-async function eliminarUsuario(id) {
-    if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
-        const res = await fetch(`/api/usuarios?id=${id}`, { method: 'DELETE' });
-        if (res.ok) {
-            cargarUsuarios();
-        } else {
-            const err = await res.json();
-            alert(err.error || "Error al eliminar");
+        if (menuBtn && mobileMenu) {
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
         }
-    }
-}
 
-cargarUsuarios();
-</script>
-{% endblock %}
+        function toggleModalTasa() {
+            const tasaModal = document.getElementById('tasa-modal');
+            if (tasaModal) {
+                tasaModal.classList.toggle('hidden');
+                tasaModal.classList.toggle('flex');
+            }
+        }
+    </script>
+</body>
+</html>
