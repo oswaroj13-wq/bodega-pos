@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- ENCABEZADO -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
+        <div>
+            <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-users text-blue-500"></i> Gestión de Clientes y Créditos
+            </h1>
+            <p class="text-xs text-slate-400">Administra tus clientes recurrentes y registra abonos de cuentas por cobrar.</p>
+        </div>
+        
+        <button onclick="abrirModalCliente()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Registrar Cliente
+        </button>
+    </div>
+
+    <!-- LISTADO DE CLIENTES -->
+    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">Directorio de Clientes</h2>
+            <input type="text" id="filter-clientes" onkeyup="filtrarClientes()" placeholder="Buscar por nombre o teléfono..." 
+                   class="w-full sm:w-64 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="tabla-clientes">
+                <thead>
+                    <tr class="border-b border-slate-700 text-xs font-semibold text-slate-400 uppercase">
+                        <th class="py-3 px-2">Cliente</th>
+                        <th class="py-3 px-2">Teléfono</th>
+                        <th class="py-3 px-2 text-center">Deuda ($)</th>
+                        <th class="py-3 px-2 text-center">Deuda (BS)</th>
+                        <th class="py-3 px-2 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="clientes-tbody" class="divide-y divide-slate-700/50 text-sm">
+                    <tr>
+                        <td colspan="5" class="py-6 text-center text-slate-500">Cargando directorio de clientes...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL REGISTRO CLIENTE -->
+<div id="modal-cliente" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl space-y-4">
+        <h3 class="text-white font-bold text-base">Registrar Nuevo Cliente</h3>
+        
+        <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Nombre Completo *</label>
+            <input type="text" id="nuevo-nombre" placeholder="Ej: Juan Pérez" 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Teléfono / WhatsApp</label>
+            <input type="text" id="nuevo-telefono" placeholder="Ej: 0412-1234567" 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+            <button onclick="cerrarModalCliente()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-xl text-xs transition">Cancelar</button>
+            <button onclick="guardarCliente()" class="w-1/2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-xl text-xs transition">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ABONAR DEUDA -->
+<div id="modal-abono" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl space-y-4">
+        <h3 class="text-white font-bold text-base">Registrar Abono a Cuenta</h3>
+        <p id="abono-cliente-nombre" class="text-xs text-blue-400 font-semibold"></p>
+        
+        <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Monto a Abonar ($ USD) *</label>
+            <input type="number" step="0.01" min="0.01" id="abono-monto" placeholder="0.00" 
+                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+            <button onclick="cerrarModalAbono()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold py-2 rounded-xl text-xs transition">Cancelar</button>
+            <button onclick="procesarAbono()" class="w-1/2 bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-xl text-xs transition">Procesar Abono</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const TASA = 36.50;
+    let clienteSeleccionadoId = null;
+
+    async function cargarTablaClientes() {
+        try {
+            const res = await fetch('/api/clientes');
+            const clientes = await res.json();
+            const tbody = document.getElementById('clientes-tbody');
+
+            if (clientes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-500">No hay clientes registrados.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = clientes.map(c => `
+                <tr class="hover:bg-slate-700/30 transition">
+                    <td class="py-3 px-2 font-medium text-white">${c.nombre}</td>
+                    <td class="py-3 px-2 text-slate-400">${c.telefono || 'N/A'}</td>
+                    <td class="py-3 px-2 text-center font-bold ${c.deuda_usd > 0 ? 'text-amber-400' : 'text-slate-400'}">
+                        $${c.deuda_usd.toFixed(2)}
+                    </td>
+                    <td class="py-3 px-2 text-center text-slate-300">
+                        ${(c.deuda_usd * TASA).toFixed(2)} BS
+                    </td>
+                    <td class="py-3 px-2 text-center">
+                        ${c.id !== 1 && c.deuda_usd > 0 ? `
+                            <button onclick="abrirModalAbono(${c.id}, '${c.nombre}')" class="bg-green-600 hover:bg-green-500 text-white text-xs px-3 py-1 rounded-lg font-bold transition">
+                                <i class="fa-solid fa-hand-holding-dollar mr-1"></i> Abonar
+                            </button>
+                        ` : '<span class="text-xs text-slate-500">Sin Deuda</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function abrirModalCliente() { document.getElementById('modal-cliente').classList.remove('hidden'); }
+    function cerrarModalCliente() { document.getElementById('modal-cliente').classList.add('hidden'); }
+
+    async function guardarCliente() {
+        const nombre = document.getElementById('nuevo-nombre').value;
+        const telefono = document.getElementById('nuevo-telefono').value;
+
+        if (!nombre) { alert('El nombre es obligatorio.'); return; }
+
+        const res = await fetch('/api/clientes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, telefono })
+        });
+
+        if (res.ok) {
+            cerrarModalCliente();
+            document.getElementById('nuevo-nombre').value = '';
+            document.getElementById('nuevo-telefono').value = '';
+            cargarTablaClientes();
+        }
+    }
+
+    function abrirModalAbono(id, nombre) {
+        clienteSeleccionadoId = id;
+        document.getElementById('abono-cliente-nombre').innerText = `Cliente: ${nombre}`;
+        document.getElementById('modal-abono').classList.remove('hidden');
+    }
+
+    function cerrarModalAbono() {
+        clienteSeleccionadoId = null;
+        document.getElementById('modal-abono').classList.add('hidden');
+    }
+
+    async function procesarAbono() {
+        const monto = parseFloat(document.getElementById('abono-monto').value || 0);
+        if (monto <= 0) { alert('Ingresa un monto válido.'); return; }
+
+        const res = await fetch('/api/clientes/abonar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cliente_id: clienteSeleccionadoId, monto_usd: monto })
+        });
+
+        if (res.ok) {
+            cerrarModalAbono();
+            document.getElementById('abono-monto').value = '';
+            cargarTablaClientes();
+        }
+    }
+
+    function filtrarClientes() {
+        const filter = document.getElementById('filter-clientes').value.toLowerCase();
+        const rows = document.getElementById('clientes-tbody').getElementsByTagName('tr');
+
+        for (let i = 0; i < rows.length; i++) {
+            const text = rows[i].textContent.toLowerCase();
+            rows[i].style.display = text.includes(filter) ? "" : "none";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarTablaClientes);
+</script>
+{% endblock %}
