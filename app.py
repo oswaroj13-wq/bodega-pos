@@ -116,6 +116,15 @@ def init_db():
         )
     ''')
 
+    # Tabla para guardar la tasa del dólar de forma persistente
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS configuracion (
+            id INTEGER PRIMARY KEY,
+            tasa_dolar REAL NOT NULL
+        )
+    ''')
+    cursor.execute("INSERT OR IGNORE INTO configuracion (id, tasa_dolar) VALUES (1, 36.5)")
+
     conn.commit()
     conn.close()
 
@@ -204,14 +213,26 @@ def inventario_view():
 def clientes_view():
     return render_template('clientes.html')
 
-@app.route('/dashboard')
+@app.route('/dashboard', methods=['GET', 'POST'])
 @login_required
 def dashboard_view():
     conn = get_db()
     cursor = conn.cursor()
     
+    # Procesar actualización de la tasa si envían el formulario
+    if request.method == 'POST':
+        nueva_tasa = request.form.get('tasa_dolar')
+        if nueva_tasa:
+            cursor.execute("UPDATE configuracion SET tasa_dolar = ? WHERE id = 1", (float(nueva_tasa),))
+            conn.commit()
+
+    # Obtener la tasa actual guardada en la base de datos
+    cursor.execute("SELECT tasa_dolar FROM configuracion WHERE id = 1")
+    tasa_row = cursor.fetchone()
+    tasa_bcv = tasa_row['tasa_dolar'] if tasa_row else 36.5
+
     # 1. Ventas de hoy
-    cursor.execute("SELECT SUM(total_usd) as total FROM ventas WHERE DATE(fecha) = DATE('now', 'localtime')")
+    cursor.execute("SELECT SUM(total_usd) as total FROM ventas WHERE DATE(fecha, 'localtime') = DATE('now', 'localtime')")
     row_hoy = cursor.fetchone()
     ventas_hoy_usd = row_hoy['total'] or 0.0
 
@@ -225,10 +246,17 @@ def dashboard_view():
     row_criticos = cursor.fetchone()
     stock_critico = row_criticos['total'] or 0
 
+    # 4. Obtener movimientos recientes (Entradas y Salidas)
+    cursor.execute('''
+        SELECT m.id, p.nombre as producto_nombre, m.tipo, m.cantidad, m.motivo, m.fecha 
+        FROM movimientos m 
+        JOIN productos p ON m.producto_id = p.id 
+        ORDER BY m.id DESC LIMIT 15
+    ''')
+    movimientos = [dict(row) for row in cursor.fetchall()]
+
     conn.close()
     
-    # Tasa de referencia en Bolívares para las tarjetas
-    tasa_bcv = 36.5
     ventas_hoy_bs = ventas_hoy_usd * tasa_bcv
     ventas_mes_bs = ventas_mes_usd * tasa_bcv
 
@@ -237,7 +265,9 @@ def dashboard_view():
                            ventas_hoy_bs=ventas_hoy_bs,
                            ventas_mes_usd=ventas_mes_usd, 
                            ventas_mes_bs=ventas_mes_bs,
-                           stock_critico=stock_critico)
+                           stock_critico=stock_critico,
+                           tasa_actual=tasa_bcv,
+                           movimientos=movimientos)
 
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
@@ -359,4 +389,3 @@ def procesar_venta():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-    
