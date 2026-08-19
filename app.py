@@ -130,7 +130,33 @@ def init_db():
 
 init_db()
 
-# --- RUTAS DE AUTENTICACIÓN ---
+# --- INYECCIÓN GLOBAL DE TASA PARA PLANTILLAS ---
+@app.context_processor
+def inject_tasa():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT tasa_dolar FROM configuracion WHERE id = 1")
+        row = cursor.fetchone()
+        conn.close()
+        tasa = row['tasa_dolar'] if row else 36.5
+    except Exception:
+        tasa = 36.5
+    return dict(tasa_actual=tasa)
+
+# --- RUTAS DE AUTENTICACIÓN Y CONFIGURACIÓN ---
+
+@app.route('/actualizar-tasa', methods=['POST'])
+@login_required
+def actualizar_tasa():
+    nueva_tasa = request.form.get('tasa_dolar')
+    if nueva_tasa:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE configuracion SET tasa_dolar = ? WHERE id = 1", (float(nueva_tasa),))
+        conn.commit()
+        conn.close()
+    return redirect(request.referrer or url_for('pos_view'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_view():
@@ -213,20 +239,13 @@ def inventario_view():
 def clientes_view():
     return render_template('clientes.html')
 
-@app.route('/dashboard', methods=['GET', 'POST'])
+@app.route('/dashboard')
 @login_required
 def dashboard_view():
     conn = get_db()
     cursor = conn.cursor()
-    
-    # Procesar actualización de la tasa si envían el formulario
-    if request.method == 'POST':
-        nueva_tasa = request.form.get('tasa_dolar')
-        if nueva_tasa:
-            cursor.execute("UPDATE configuracion SET tasa_dolar = ? WHERE id = 1", (float(nueva_tasa),))
-            conn.commit()
 
-    # Obtener la tasa actual guardada en la base de datos
+    # Tasa obtenida de la base de datos
     cursor.execute("SELECT tasa_dolar FROM configuracion WHERE id = 1")
     tasa_row = cursor.fetchone()
     tasa_bcv = tasa_row['tasa_dolar'] if tasa_row else 36.5
@@ -241,12 +260,12 @@ def dashboard_view():
     row_mes = cursor.fetchone()
     ventas_mes_usd = row_mes['total'] or 0.0
 
-    # 3. Alertas de inventario (productos con stock <= 5)
+    # 3. Alertas de inventario (stock <= 5)
     cursor.execute("SELECT COUNT(*) as total FROM productos WHERE stock <= 5")
     row_criticos = cursor.fetchone()
     stock_critico = row_criticos['total'] or 0
 
-    # 4. Obtener movimientos recientes (Entradas y Salidas)
+    # 4. Movimientos recientes (Entradas y Salidas)
     cursor.execute('''
         SELECT m.id, p.nombre as producto_nombre, m.tipo, m.cantidad, m.motivo, m.fecha 
         FROM movimientos m 
@@ -266,7 +285,6 @@ def dashboard_view():
                            ventas_mes_usd=ventas_mes_usd, 
                            ventas_mes_bs=ventas_mes_bs,
                            stock_critico=stock_critico,
-                           tasa_actual=tasa_bcv,
                            movimientos=movimientos)
 
 @app.route('/usuarios', methods=['GET', 'POST'])
@@ -389,3 +407,4 @@ def procesar_venta():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+    
