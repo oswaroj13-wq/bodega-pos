@@ -1,367 +1,314 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto de Venta - Bodega POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-{% block content %}
-<!-- Librería Html5Qrcode para lectura de códigos con cámara -->
-<script src="https://unpkg.com/html5-qrcode"></script>
-
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- PANEL IZQUIERDO: BÚSQUEDA Y CARRITO -->
-    <div class="lg:col-span-8 space-y-4">
-        
-        <!-- Buscador con Cámara -->
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md flex gap-2">
-            <div class="relative flex-1">
-                <input type="text" id="barcode-input" placeholder="Escanea o escribe el código de barras..." 
-                       class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
-                       onkeypress="if(event.key === 'Enter') buscarPorCodigoDirecto(this.value)">
-                <i class="fa-solid fa-barcode absolute left-3 top-3.5 text-slate-500"></i>
-            </div>
+    <!-- Barra de Navegación -->
+    <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3 shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <a href="{{ url_for('pos_view') }}" class="text-xl font-bold flex items-center gap-2 text-emerald-400">
+                <i class="fas fa-store"></i> BodegaPOS
+            </a>
             
-            <button type="button" onclick="iniciarEscanerPOS()" 
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition"
-                    title="Escanear con Cámara">
-                <i class="fa-solid fa-camera"></i>
-                <span class="hidden sm:inline">Cámara</span>
-            </button>
-        </div>
+            <!-- Menú Escritorio -->
+            <div class="hidden md:flex items-center space-x-2 text-sm font-medium">
+                <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Punto de Venta</a>
+                <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+                <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+                <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+                <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+                
+                <!-- Botón Tasa (Escritorio) -->
+                <button onclick="toggleModalTasa()" class="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg font-semibold flex items-center gap-1.5 hover:bg-emerald-500/20 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+                <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+            </div>
 
-        <!-- Tabla del Carrito de Compras -->
-        <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Carrito de Ventas</h2>
-                <button onclick="vaciarCarrito()" class="text-red-400 hover:text-red-300 text-xs flex items-center gap-1">
-                    <i class="fa-solid fa-trash-can"></i> Vaciar
+            <!-- Botones Móvil -->
+            <div class="md:hidden flex items-center gap-2">
+                <button onclick="toggleModalTasa()" class="px-2.5 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition">
+                    <i class="fas fa-coins"></i> Bs. {{ "%.2f"|format(tasa_actual) }}
+                </button>
+
+                <button id="menu-btn" class="p-2 rounded-lg bg-slate-700 text-slate-300 hover:text-white focus:outline-none">
+                    <i class="fas fa-bars text-lg"></i>
                 </button>
             </div>
+        </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse" id="tabla-carrito">
-                    <thead>
-                        <tr class="border-b border-slate-700 text-xs font-semibold text-slate-400 uppercase">
-                            <th class="py-2 px-2">Producto</th>
-                            <th class="py-2 px-2 text-center">Precio</th>
-                            <th class="py-2 px-2 text-center">Cant.</th>
-                            <th class="py-2 px-2 text-right">Subtotal</th>
-                            <th class="py-2 px-2 text-center">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="carrito-body" class="divide-y divide-slate-700/50 text-sm">
-                        <tr>
-                            <td colspan="5" class="py-8 text-center text-slate-500">
-                                El carrito está vacío. Escanea o busca un producto.
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        <!-- Menú Desplegable Móvil -->
+        <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-slate-700 flex flex-col space-y-1 text-sm font-medium">
+            <a href="{{ url_for('pos_view') }}" class="px-3 py-2 rounded-lg bg-slate-700 text-emerald-400">Punto de Venta</a>
+            <a href="{{ url_for('inventario_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Inventario</a>
+            <a href="{{ url_for('clientes_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Clientes</a>
+            <a href="{{ url_for('dashboard_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Dashboard</a>
+            <a href="{{ url_for('usuarios_view') }}" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700 transition">Usuarios</a>
+            <a href="{{ url_for('logout') }}" class="px-3 py-2 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white transition">Salir</a>
+        </div>
+    </nav>
+
+    <!-- Contenido Principal POS -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Búsqueda y Lista del Carrito -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-lg">
+                <form id="buscar-form" class="flex gap-2">
+                    <div class="relative flex-grow">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fas fa-barcode"></i></span>
+                        <input type="text" id="codigo-input" placeholder="Escanear o ingresar código..." 
+                               class="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition" autofocus>
+                    </div>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-medium transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> <span class="hidden sm:inline">Agregar</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col h-[480px]">
+                <h2 class="text-lg font-semibold text-slate-200 mb-3 flex items-center gap-2">
+                    <i class="fas fa-shopping-cart text-emerald-400"></i> Carrito de Compras
+                </h2>
+                <div class="overflow-y-auto flex-grow pr-1">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-slate-400 text-xs">
+                                <th class="py-2">Producto</th>
+                                <th class="py-2 text-center">Cant.</th>
+                                <th class="py-2 text-right">P. Unit</th>
+                                <th class="py-2 text-right">Subtotal</th>
+                                <th class="py-2 text-center"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="carrito-body" class="divide-y divide-slate-700/50 text-sm">
+                            <!-- Items dinámicos -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- PANEL DERECHO: RESUMEN Y DESPACHO -->
-    <div class="lg:col-span-4 space-y-4">
-        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6 sticky top-6">
-            <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                <i class="fa-solid fa-calculator text-blue-400"></i> Resumen de Pago
-            </h2>
+        <!-- Panel Lateral de Pago -->
+        <div class="space-y-4">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg space-y-6">
+                <h2 class="text-xl font-bold text-slate-100 border-b border-slate-700 pb-3">Resumen de Venta</h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Cliente</label>
+                        <select id="cliente-select" class="w-full py-2.5 px-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition">
+                            <option value="1">Cliente Genérico</option>
+                        </select>
+                    </div>
 
-            <!-- Selección de Cliente y Tipo de Pago -->
-            <div class="space-y-4 border-t border-slate-700/60 pt-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Cliente</label>
-                    <select id="select-cliente" onchange="verificarCredito()" 
-                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-                        <option value="1">Cliente Genérico</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Condición de Pago</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn-pago-contado" onclick="setTipoPago(false)" 
-                                class="py-2 px-3 rounded-lg text-xs font-bold bg-green-600 text-white border border-green-500 transition">
-                            <i class="fa-solid fa-money-bill-wave mr-1"></i> Contado
-                        </button>
-                        <button type="button" id="btn-pago-credito" onclick="setTipoPago(true)" 
-                                class="py-2 px-3 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 border border-slate-600 transition">
-                            <i class="fa-solid fa-clock-rotate-left mr-1"></i> Crédito (Fiado)
-                        </button>
+                    <div class="flex items-center gap-2 pt-2">
+                        <input type="checkbox" id="credito-check" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-emerald-600 focus:ring-0 focus:ring-offset-0">
+                        <label for="credito-check" class="text-sm text-slate-300 font-medium">Venta Fiada (A Crédito)</label>
                     </div>
                 </div>
-            </div>
 
-            <!-- Totales -->
-            <div class="space-y-3 border-t border-b border-slate-700/60 py-4">
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-400">Total en USD:</span>
-                    <span id="pos-total-usd" class="text-2xl font-black text-green-400">$0.00</span>
+                <div class="border-t border-slate-700 pt-4 space-y-2">
+                    <div class="flex justify-between text-slate-400 text-sm">
+                        <span>Total (USD):</span>
+                        <span id="total-usd" class="font-semibold text-slate-200">$0.00</span>
+                    </div>
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-slate-300 font-medium">Total (Bs):</span>
+                        <span id="total-bs" class="text-2xl font-bold text-emerald-400">Bs. 0.00</span>
+                    </div>
                 </div>
-                <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-400">Total en BS:</span>
-                    <span id="pos-total-bs" class="text-xl font-bold text-blue-400">0.00 BS</span>
-                </div>
-            </div>
 
-            <button type="button" onclick="procesarVentaPOS()" id="btn-procesar"
-                    class="w-full bg-green-600 hover:bg-green-500 text-white font-extrabold py-3.5 px-4 rounded-xl text-base transition flex items-center justify-center gap-2 shadow-lg shadow-green-900/20">
-                <i class="fa-solid fa-check-circle"></i> Procesar Venta
-            </button>
+                <button id="procesar-btn" onclick="procesarVenta()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fas fa-check-circle"></i> Procesar Venta
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Tasa -->
+    <div id="tasa-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl max-w-sm w-full space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                    <i class="fas fa-coins text-emerald-400"></i> Actualizar Tasa BCV
+                </h3>
+                <button onclick="toggleModalTasa()" class="text-slate-400 hover:text-white text-lg"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <form action="{{ url_for('actualizar_tasa') }}" method="POST" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Nueva Tasa en Bolívares (Bs. / $)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs.</span>
+                        <input type="number" step="0.01" name="tasa_dolar" value="{{ tasa_actual }}" 
+                               class="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 transition" required>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="toggleModalTasa()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-medium transition">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-600/20 transition">Guardar Tasa</button>
+                </div>
+            </form>
         </div>
     </div>
 
-</div>
+    <!-- Scripts del POS -->
+    <script>
+        const TASA_ACTUAL = {{ tasa_actual }};
+        let carrito = [];
 
-<!-- MODAL CÁMARA ESCÁNER PARA EL POS -->
-<div id="modal-escaner-pos" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl">
-        <h3 class="text-white font-bold text-base mb-1">Escaneando Producto</h3>
-        <p class="text-xs text-slate-400 mb-4">Apunta la cámara al código de barras.</p>
-        
-        <div id="reader-pos" class="w-full overflow-hidden rounded-xl bg-black border border-slate-600"></div>
-
-        <button type="button" onclick="detenerEscanerPOS()" 
-                class="mt-4 bg-red-600 hover:bg-red-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs w-full transition">
-            <i class="fa-solid fa-xmark mr-1"></i> Cerrar Cámara
-        </button>
-    </div>
-</div>
-
-<script>
-    const TASA = 36.50;
-    let carrito = [];
-    let esCredito = false;
-    let html5QrcodeScannerPOS = null;
-
-    async function cargarClientesPOS() {
-        try {
-            const res = await fetch('/api/clientes');
-            const clientes = await res.json();
-            const select = document.getElementById('select-cliente');
-            
-            select.innerHTML = clientes.map(c => 
-                `<option value="${c.id}">${c.nombre} ${c.deuda_usd > 0 ? `(Debe: $${c.deuda_usd.toFixed(2)})` : ''}</option>`
-            ).join('');
-        } catch (e) {
-            console.error('Error al cargar clientes:', e);
+        const menuBtn = document.getElementById('menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (menuBtn && mobileMenu) {
+            menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
         }
-    }
 
-    function setTipoPago(credito) {
-        const clienteId = document.getElementById('select-cliente').value;
-        if (credito && clienteId === "1") {
-            alert("No le puedes fiar al Cliente Genérico. Selecciona un cliente registrado.");
-            return;
-        }
-        
-        esCredito = credito;
-        const btnContado = document.getElementById('btn-pago-contado');
-        const btnCredito = document.getElementById('btn-pago-credito');
-
-        if (esCredito) {
-            btnCredito.className = "py-2 px-3 rounded-lg text-xs font-bold bg-amber-600 text-white border border-amber-500 transition";
-            btnContado.className = "py-2 px-3 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 border border-slate-600 transition";
-        } else {
-            btnContado.className = "py-2 px-3 rounded-lg text-xs font-bold bg-green-600 text-white border border-green-500 transition";
-            btnCredito.className = "py-2 px-3 rounded-lg text-xs font-bold bg-slate-700 text-slate-300 border border-slate-600 transition";
-        }
-    }
-
-    function verificarCredito() {
-        const clienteId = document.getElementById('select-cliente').value;
-        if (clienteId === "1" && esCredito) {
-            setTipoPago(false);
-        }
-    }
-
-    async function buscarPorCodigoDirecto(codigo) {
-        const cod = codigo.trim();
-        if (!cod) return;
-
-        try {
-            const res = await fetch(`/api/producto/${cod}`);
-            if (res.ok) {
-                const prod = await res.json();
-                agregarAlCarrito(prod);
-                document.getElementById('barcode-input').value = '';
-            } else {
-                alert(`Producto con código "${cod}" no encontrado.`);
+        function toggleModalTasa() {
+            const tasaModal = document.getElementById('tasa-modal');
+            if (tasaModal) {
+                tasaModal.classList.toggle('hidden');
+                tasaModal.classList.toggle('flex');
             }
-        } catch (e) {
-            alert('Error de conexión al buscar producto.');
         }
-    }
 
-    function iniciarEscanerPOS() {
-        document.getElementById('modal-escaner-pos').classList.remove('hidden');
-        
-        html5QrcodeScannerPOS = new Html5Qrcode("reader-pos");
-        const config = { fps: 15, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
+        // Cargar Lista de Clientes
+        async function cargarClientes() {
+            try {
+                const res = await fetch('/api/clientes');
+                const clientes = await res.json();
+                const select = document.getElementById('cliente-select');
+                select.innerHTML = '';
+                clientes.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+                });
+            } catch (e) { console.error("Error cargando clientes", e); }
+        }
 
-        html5QrcodeScannerPOS.start(
-            { facingMode: "environment" },
-            config,
-            async (decodedText) => {
-                await buscarPorCodigoDirecto(decodedText);
-            },
-            (errorMessage) => {}
-        ).catch(err => {
-            alert("No se pudo acceder a la cámara. Verifica los permisos del navegador.");
-            detenerEscanerPOS();
+        // Buscar Producto por Código
+        document.getElementById('buscar-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('codigo-input');
+            const codigo = input.value.trim();
+            if (!codigo) return;
+
+            try {
+                const res = await fetch(`/api/producto/${codigo}`);
+                if (res.ok) {
+                    const prod = await res.json();
+                    agregarAlCarrito(prod);
+                    input.value = '';
+                } else {
+                    alert('Producto no encontrado');
+                }
+            } catch (e) { alert('Error al buscar el producto'); }
         });
-    }
 
-    function detenerEscanerPOS() {
-        if (html5QrcodeScannerPOS) {
-            html5QrcodeScannerPOS.stop().then(() => {
-                html5QrcodeScannerPOS.clear();
-                document.getElementById('modal-escaner-pos').classList.add('hidden');
-            }).catch(() => {
-                document.getElementById('modal-escaner-pos').classList.add('hidden');
-            });
-        } else {
-            document.getElementById('modal-escaner-pos').classList.add('hidden');
-        }
-    }
-
-    function agregarAlCarrito(prod) {
-        const itemExistente = carrito.find(i => i.id === prod.id);
-
-        if (itemExistente) {
-            if (itemExistente.cantidad + 1 > prod.stock) {
-                alert(`No hay suficiente stock. Disponible: ${prod.stock}`);
-                return;
-            }
-            itemExistente.cantidad += 1;
-        } else {
-            if (prod.stock < 1) {
-                alert(`El producto "${prod.nombre}" está agotado.`);
-                return;
-            }
-            carrito.push({
-                id: prod.id,
-                nombre: prod.nombre,
-                precio: prod.precio,
-                stock: prod.stock,
-                cantidad: 1
-            });
-        }
-
-        renderizarCarrito();
-    }
-
-    function cambiarCantidad(index, cambio) {
-        const item = carrito[index];
-        const nuevaCantidad = item.cantidad + cambio;
-
-        if (nuevaCantidad <= 0) {
-            eliminarDelCarrito(index);
-            return;
-        }
-
-        if (nuevaCantidad > item.stock) {
-            alert(`Stock máximo alcanzado (${item.stock} disponibles).`);
-            return;
-        }
-
-        item.cantidad = nuevaCantidad;
-        renderizarCarrito();
-    }
-
-    function eliminarDelCarrito(index) {
-        carrito.splice(index, 1);
-        renderizarCarrito();
-    }
-
-    function vaciarCarrito() {
-        carrito = [];
-        renderizarCarrito();
-    }
-
-    function renderizarCarrito() {
-        const tbody = document.getElementById('carrito-body');
-
-        if (carrito.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="py-8 text-center text-slate-500">
-                        El carrito está vacío. Escanea o busca un producto.
-                    </td>
-                </tr>`;
-            document.getElementById('pos-total-usd').innerText = '$0.00';
-            document.getElementById('pos-total-bs').innerText = '0.00 BS';
-            return;
-        }
-
-        let totalUSD = 0;
-
-        tbody.innerHTML = carrito.map((item, index) => {
-            const subtotal = item.precio * item.cantidad;
-            totalUSD += subtotal;
-
-            return `
-                <tr class="hover:bg-slate-700/30 transition">
-                    <td class="py-3 px-2 font-medium text-white">${item.nombre}</td>
-                    <td class="py-3 px-2 text-center text-slate-300">$${item.precio.toFixed(2)}</td>
-                    <td class="py-3 px-2 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <button onclick="cambiarCantidad(${index}, -1)" class="w-6 h-6 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 font-bold flex items-center justify-center">-</button>
-                            <span class="font-bold text-white w-6 text-center">${item.cantidad}</span>
-                            <button onclick="cambiarCantidad(${index}, 1)" class="w-6 h-6 bg-slate-700 hover:bg-slate-600 rounded text-slate-200 font-bold flex items-center justify-center">+</button>
-                        </div>
-                    </td>
-                    <td class="py-3 px-2 text-right font-bold text-green-400">$${subtotal.toFixed(2)}</td>
-                    <td class="py-3 px-2 text-center">
-                        <button onclick="eliminarDelCarrito(${index})" class="text-red-400 hover:text-red-300">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
-        document.getElementById('pos-total-usd').innerText = `$${totalUSD.toFixed(2)}`;
-        document.getElementById('pos-total-bs').innerText = `${(totalUSD * TASA).toFixed(2)} BS`;
-    }
-
-    async function procesarVentaPOS() {
-        if (carrito.length === 0) {
-            alert('El carrito está vacío.');
-            return;
-        }
-
-        const clienteId = document.getElementById('select-cliente').value;
-        const btn = document.getElementById('btn-procesar');
-        btn.disabled = true;
-        btn.innerText = 'Procesando...';
-
-        try {
-            const res = await fetch('/api/ventas/procesar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    items: carrito,
-                    cliente_id: clienteId,
-                    es_credito: esCredito
-                })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                alert(`¡Venta #${String(data.venta_id).padStart(5, '0')} procesada exitosamente!`);
-                vaciarCarrito();
-                cargarClientesPOS();
+        function agregarAlCarrito(prod) {
+            const index = carrito.findIndex(i => i.id === prod.id);
+            if (index > -1) {
+                if (carrito[index].cantidad + 1 > prod.stock) {
+                    alert('Límite de stock alcanzado');
+                    return;
+                }
+                carrito[index].cantidad += 1;
             } else {
-                alert(data.message || 'Error al procesar la venta.');
+                if (prod.stock < 1) {
+                    alert('Producto sin stock');
+                    return;
+                }
+                carrito.push({ ...prod, cantidad: 1 });
             }
-        } catch (e) {
-            alert('Error de conexión con el servidor.');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-check-circle"></i> Procesar Venta';
+            renderCarrito();
         }
-    }
 
-    document.addEventListener('DOMContentLoaded', cargarClientesPOS);
-</script>
-{% endblock %}
+        function cambiarCantidad(id, delta) {
+            const item = carrito.find(i => i.id === id);
+            if (!item) return;
+
+            if (item.cantidad + delta > item.stock) {
+                alert('Supera el stock disponible');
+                return;
+            }
+
+            item.cantidad += delta;
+            if (item.cantidad <= 0) {
+                carrito = carrito.filter(i => i.id !== id);
+            }
+            renderCarrito();
+        }
+
+        function renderCarrito() {
+            const body = document.getElementById('carrito-body');
+            body.innerHTML = '';
+            let totalUsd = 0;
+
+            carrito.forEach(item => {
+                const subtotal = item.precio * item.cantidad;
+                totalUsd += subtotal;
+
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="py-3 font-medium text-slate-200">${item.nombre}</td>
+                        <td class="py-3 text-center">
+                            <div class="inline-flex items-center gap-2">
+                                <button onclick="cambiarCantidad(${item.id}, -1)" class="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center justify-center">-</button>
+                                <span class="font-bold w-4 text-center">${item.cantidad}</span>
+                                <button onclick="cambiarCantidad(${item.id}, 1)" class="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 flex items-center justify-center">+</button>
+                            </div>
+                        </td>
+                        <td class="py-3 text-right text-slate-300">$${item.precio.toFixed(2)}</td>
+                        <td class="py-3 text-right font-semibold text-emerald-400">$${subtotal.toFixed(2)}</td>
+                        <td class="py-3 text-center">
+                            <button onclick="cambiarCantidad(${item.id}, -${item.cantidad})" class="text-rose-400 hover:text-rose-300"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const totalBs = totalUsd * TASA_ACTUAL;
+            document.getElementById('total-usd').innerText = `$${totalUsd.toFixed(2)}`;
+            document.getElementById('total-bs').innerText = `Bs. ${totalBs.toFixed(2)}`;
+        }
+
+        async function procesarVenta() {
+            if (carrito.length === 0) {
+                alert('El carrito está vacío');
+                return;
+            }
+
+            const payload = {
+                items: carrito,
+                cliente_id: parseInt(document.getElementById('cliente-select').value),
+                es_credito: document.getElementById('credito-check').checked
+            };
+
+            try {
+                const res = await fetch('/api/ventas/procesar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Venta procesada con éxito');
+                    carrito = [];
+                    renderCarrito();
+                    document.getElementById('credito-check').checked = false;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (e) { alert('Ocurrió un error al procesar la venta'); }
+        }
+
+        cargarClientes();
+    </script>
+</body>
+</html>
